@@ -6,6 +6,8 @@
 import streamlit as st
 import json
 import sqlite3
+import smtplib
+from email.mime.text import MIMEText
 
 # ─────────────────────────────────────────────
 #  ★  CREDENTIALS — Edit here to add/remove users
@@ -147,6 +149,42 @@ def update_complaint_status(complaint_id, status, accepted=None):
     
     conn.commit()
     conn.close()
+    # ─────────────────────────────────────────────
+# EMAIL NOTIFICATION FUNCTION
+# ─────────────────────────────────────────────
+def send_admin_notification(student_name, complaint_data):
+    sender_email = "saikundhanika19@gmail.com"
+    admin_email = "ahalyajonnalagadda07@gmail.com"
+    app_password = "xefm qzmx ponr zjju"
+
+    subject = f"🚨 New Complaint {complaint_data['id']}"
+
+    body = f"""
+    New complaint submitted!
+
+    Complaint ID: {complaint_data['id']}
+    Student: {student_name}
+    Type: {complaint_data['type']}
+    Location: {complaint_data['location']}
+    Priority: {complaint_data['priority']}
+
+    Description:
+    {complaint_data['description']}
+    """
+
+    msg = MIMEText(body)
+    msg["Subject"] = subject
+    msg["From"] = sender_email
+    msg["To"] = admin_email
+
+    try:
+        server = smtplib.SMTP("smtp.gmail.com", 587)
+        server.starttls()
+        server.login(sender_email, app_password)
+        server.send_message(msg)
+        server.quit()
+    except Exception as e:
+        print("Email Error:", e)
 # ─────────────────────────────────────────────
 #  PAGE CONFIG
 # ─────────────────────────────────────────────
@@ -163,106 +201,112 @@ st.set_page_config(
 def load_styles():
     st.markdown("""
     <style>
-    h1 {
-    color: black !important;
-    font-size: 4rem !important;
-}
 
     @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap');
 
     html, body, [class*="css"] { font-family: 'Nunito', sans-serif; }
 
-    /* DARKER BACKGROUND */
+    /* BACKGROUND */
     .stApp { 
-        background: linear-gradient(f4f7ff);
+        background: linear-gradient(135deg, #f4f7ff, #eaf2f8);
     }
 
     #MainMenu, footer { visibility: hidden; }
     .block-container { padding-top: 2rem; max-width: 960px; }
 
-    /* HEADER - STRONG CONTRAST */
+    /* HEADER */
     .app-header {
-    background: transparent !important;
-    box-shadow: none !important;
-    padding: 0;
-    text-align: center;
+        background: transparent !important;
+        box-shadow: none !important;
+        padding: 0;
+        text-align: center;
+    }
 
-    }
     .main-tittle {
-    font-size: 4rem !important;   /* BIG TITLE */
-    font-weight: 900;
-    color: #000000 !important;    /* BLACK TEXT */
-    margin: 20px 0;
-    }
-    .app-header h1{
-        font-size: 3.5rem;      /* 🔼 bigger */
+        font-size: 4rem !important;
         font-weight: 900;
-        color: #000000;         /* ⚫ black text */
+        color: #000000 !important;
+        margin: 20px 0;
+    }
+
+    .app-header h1{
+        font-size: 3.5rem;
+        font-weight: 900;
+        color: #000000;
         margin-top: 10px;
     }
+
     .app-header p {
-    color: #ADD8E6;   /* darker subtitle */
-    font-size: 1.5rem;
+        color: #5f6c72;
+        font-size: 1.5rem;
     }
 
-   
+    /* TITLES */
+    h1 {
+        color: black !important;
+        font-size: 4rem !important;
+    }
 
     .login-title, .card-title {
-        text-align: center;
+        text-align: left;
         margin-bottom: 15px;
-        color: #1e4d8c !important;
-        font-weight: 900;
-        font-size: 4rem;
+        color: #8baad0 !important;
+        font-weight: 2000;
+        font-size: 5rem;
     }
 
     .login-subtitle, .card-subtitle {
         color: #555;
     }
 
-    /* BUTTONS - MORE VISIBLE */
+    /* BUTTONS - YOUR NEW COLOR */
     div[data-testid="stButton"] > button {
-        background: #38bdf8;
-        border: 2px solid #1e4d8c;
-        color: #0d2b5e;
+        background: #8baad0;
+        border: 2px solid #6f98b8;
+        color: white;
         border-radius: 12px;
         font-weight: 700;
+        transition: 0.3s ease;
     }
+    
 
     div[data-testid="stButton"] > button:hover {
-        background: #1e4d8c;
+        background: #6f98b8;   /* darker hover */
         color: #ffffff;
     }
 
     /* PRIMARY BUTTON */
     .blue-btn > div[data-testid="stButton"] > button {
-        background: #1e4d8c !important;
+        background: #8baad0 !important;
         color: #fff !important;
         border: none !important;
     }
 
-    /* GREEN BUTTON */
+    /* SUCCESS BUTTON */
     .green-btn > div[data-testid="stButton"] > button {
-        background: #2a9d3a !important;
-        color: #fff !important;
+        background: #9fd3c7 !important;
+        color: #0f172a !important;
         border: none !important;
     }
+   
 
-    /* RED BUTTON */
+
+
+    /* DANGER BUTTON */
     .red-btn > div[data-testid="stButton"] > button {
-        background: #c0392b !important;
-        color: #fff !important;
+        background: #e6a4a4 !important;
+        color: #ffffff !important;
         border: none !important;
     }
 
-    /* TEXT FIXES */
+    /* CARD TEXT */
     .card p, .card h1, .card h2, .card h3, .card h4 {
-    color: #111 !important;
-}
-  
+        color: #111 !important;
+    }
 
-    /* TABLE VISIBILITY */
+    /* TABLE */
     table.cmp-table th {
-        background: #1e4d8c;
+        background: #8baad0;
         color: #ffffff;
     }
 
@@ -272,10 +316,13 @@ def load_styles():
     }
 
     table.cmp-table tr:hover td {
-        background: #eef4ff;
+        background: #f0f6fb;
     }
+
+    /* REMOVE HEADER BACKGROUND */
     header[data-testid="stHeader"]{
-    background: transparent !important}
+        background: transparent !important;
+    }
 
     </style>
     """, unsafe_allow_html=True)
@@ -315,14 +362,14 @@ def render_header():
     role_label = "Admin Panel" if st.session_state.role == "admin" else "Student Portal"
     st.markdown(f"""
     <div class="app-header">
-        <div style="font-size:2rem;">🎓</div>
+        <div style="font-size:7rem;">🎓</div>
         <div style="flex:1;">
-            <h1 class="main-tittle">Smart College Problem Reporter</h1>
+            <h2 class="main-tittle">Smart College Problem Reporter</h2>
             <p>Report campus issues instantly to management</p>
         </div>
-        <div style="text-align:right; font-size:.78rem; opacity:.85;">
+        <div style="text-align:right; font-size:.rem; opacity:.85;">
             👤 {st.session_state.username}<br>
-            <span style="font-size:.7rem; background:rgba(255,255,255,.15);
+            <span style="font-size:.3rem; background:rgba(255,255,255,.15);
                         padding:2px 8px; border-radius:99px;">{role_label}</span>
         </div>
     </div>
@@ -426,24 +473,43 @@ def page_home():
     col_title, col_logout = st.columns([3, 1])
     with col_title:
         st.markdown(
-            f'<p class="card-title">Welcome, {st.session_state.username.capitalize()}! 👋</p>',
+            f'<h4 class="card-title">Welcome! 👋</h4>',
             unsafe_allow_html=True,
         )
         st.markdown('<p class="card-subtitle">Select the type of issue you want to report</p>', unsafe_allow_html=True)
     with col_logout:
         logout_button()
 
-    col1, col2 = st.columns(2)
+    col1, col2, col3, col4 = st.columns(4, gap="large")
+    def card(label, desc, key, value):
+        if st.button(f"{label}\n{desc}", key=key):
+            st.session_state.issue = value
+            st.session_state.page = "complaint"
+            st.rerun()
+
     with col1:
-        if st.button("💻  Computer Issue\n\nPC or Lab Problems"):
-            go("report", "Computer Issue")
-        if st.button("📺  Board / Projector Issue\n\nSmart Board Problems"):
-            go("report", "Board / Projector Issue")
+        st.markdown('<div class="card">💻<br><b>Computer Issue</b><br>PC or Lab Problems</div>', unsafe_allow_html=True)
+        if st.button("Select", key="comp"):
+            st.session_state.issue = "Computer"
+            go("report","Computer Issue")
+
     with col2:
-        if st.button("🔏  Biometric Issue\n\nFingerprint Scanner Issues"):
-            go("report", "Biometric Issue")
-        if st.button("📶  Network Issue\n\nInternet / Wi-Fi Problems"):
-            go("report", "Network Issue")
+        st.markdown('<div class="card">🔐<br><b>Biometric Issue</b><br>Fingerprint Scanner Issues</div>', unsafe_allow_html=True)
+        if st.button("Select", key="bio"):
+            st.session_state.issue = "Biometric"
+            go("report","Biometric Issue")
+
+    with col3:
+        st.markdown('<div class="card">📺<br><b>Board / Projector</b><br>Smart Board Problems</div>', unsafe_allow_html=True)
+        if st.button("Select", key="board"):
+            st.session_state.issue = "Board"
+            go("report","Board / Projector Issue")
+
+    with col4:
+        st.markdown('<div class="card">📶<br><b>Network Issue</b><br>Internet / Wi-Fi Problems</div>', unsafe_allow_html=True)
+        if st.button("Select", key="net"):
+            st.session_state.issue = "Network"
+            go("report","Network Issue")
 
     st.markdown("<br>", unsafe_allow_html=True)
     col_a, col_b = st.columns(2)
@@ -529,11 +595,12 @@ def page_report():
             }
             
             add_complaint(complaint_data)
-            
+
+# 🔔 SEND EMAIL TO ADMIN HERE
+            send_admin_notification(st.session_state.username, complaint_data)
+
             st.success(f"✅ Complaint **{cid}** submitted! Our team will respond within 24–48 hours.")
             st.balloons()
-    
-    st.markdown('</div>', unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────
 #  PAGE 3 — MY COMPLAINTS
