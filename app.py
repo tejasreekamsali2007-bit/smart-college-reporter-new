@@ -128,6 +128,19 @@ def add_complaint(complaint_data):
 
     conn.commit()
     conn.close()
+def find_duplicate(issue_type, location):
+    conn = sqlite3.connect("complaints.db")
+    c = conn.cursor()
+
+    c.execute("""
+        SELECT id, description FROM complaints
+        WHERE type=? AND location=? AND status='Pending'
+    """, (issue_type, location))
+
+    result = c.fetchone()
+    conn.close()
+
+    return result
 
 
 def update_complaint_status(complaint_id, status, accepted=None):
@@ -149,13 +162,15 @@ def update_complaint_status(complaint_id, status, accepted=None):
     
     conn.commit()
     conn.close()
-    # ─────────────────────────────────────────────
+
+
+# ─────────────────────────────────────────────
 # EMAIL NOTIFICATION FUNCTION
 # ─────────────────────────────────────────────
 def send_admin_notification(student_name, complaint_data):
-    sender_email = "saikundhanika19@gmail.com"
-    admin_email = "ahalyajonnalagadda07@gmail.com"
-    app_password = "xefm qzmx ponr zjju"
+    sender_email = "sender.issue.tracker@gmail.com"
+    admin_email = "alert.collegereporter@gmail.com"
+    app_password = "ypxb ctns cxdi dawp"
 
     subject = f"🚨 New Complaint {complaint_data['id']}"
 
@@ -185,6 +200,8 @@ def send_admin_notification(student_name, complaint_data):
         server.quit()
     except Exception as e:
         print("Email Error:", e)
+
+
 # ─────────────────────────────────────────────
 #  PAGE CONFIG
 # ─────────────────────────────────────────────
@@ -201,7 +218,6 @@ st.set_page_config(
 def load_styles():
     st.markdown("""
     <style>
-
     @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap');
 
     html, body, [class*="css"] { font-family: 'Nunito', sans-serif; }
@@ -259,7 +275,7 @@ def load_styles():
         color: #555;
     }
 
-    /* BUTTONS - YOUR NEW COLOR */
+    /* BUTTONS - YOUR NEW COLOR (KEEPING LOGIN BUTTON STYLE) */
     div[data-testid="stButton"] > button {
         background: #8baad0;
         border: 2px solid #6f98b8;
@@ -269,9 +285,8 @@ def load_styles():
         transition: 0.3s ease;
     }
     
-
     div[data-testid="stButton"] > button:hover {
-        background: #6f98b8;   /* darker hover */
+        background: #6f98b8;
         color: #ffffff;
     }
 
@@ -288,9 +303,6 @@ def load_styles():
         color: #0f172a !important;
         border: none !important;
     }
-   
-
-
 
     /* DANGER BUTTON */
     .red-btn > div[data-testid="stButton"] > button {
@@ -324,8 +336,91 @@ def load_styles():
         background: transparent !important;
     }
 
+    /* ========== NEW ISSUE CARD STYLES ========== */
+    .issue-card {
+        background: linear-gradient(135deg, #ffffff, #f8fafc);
+        border-radius: 20px;
+        padding: 1.5rem;
+        margin: 0.5rem;
+        text-align: center;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08), 0 4px 6px rgba(0, 0, 0, 0.02);
+        transition: all 0.3s ease;
+        border: 1px solid rgba(139, 170, 208, 0.2);
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .issue-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 20px 35px rgba(0, 0, 0, 0.12), 0 5px 12px rgba(0, 0, 0, 0.05);
+        border-color: #8baad0;
+    }
+    
+    .issue-icon {
+        font-size: 3.5rem;
+        margin-bottom: 1rem;
+    }
+    
+    .issue-title {
+        font-size: 1.25rem;
+        font-weight: 800;
+        color: #1a3a6b;
+        margin-bottom: 0.5rem;
+    }
+    
+    .issue-desc {
+        font-size: 0.85rem;
+        color: #6b7a99;
+        margin-bottom: 1.25rem;
+        flex-grow: 1;
+    }
+    
+    .issue-card .stButton button {
+        width: 100%;
+        background: linear-gradient(135deg, #8baad0, #7a9ec2);
+        border: none;
+        color: white;
+        padding: 0.6rem;
+        font-size: 0.9rem;
+        font-weight: 600;
+        border-radius: 12px;
+        margin-top: auto;
+    }
+    
+    .issue-card .stButton button:hover {
+        background: linear-gradient(135deg, #7a9ec2, #6f98b8);
+        transform: translateY(-2px);
+    }
+
+    /* Welcome card */
+    .welcome-card {
+        background: linear-gradient(135deg, #8baad0, #a0bcd8);
+        border-radius: 16px;
+        padding: 1.2rem 1.8rem;
+        margin-bottom: 2rem;
+        color: white;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: 0 4px 12px rgba(139, 170, 208, 0.3);
+    }
+    
+    .welcome-text {
+        font-size: 1.3rem;
+        font-weight: 700;
+    }
+    
+    .welcome-badge {
+        background: rgba(255,255,255,0.2);
+        padding: 0.3rem 1rem;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
     </style>
     """, unsafe_allow_html=True)
+
 
 # ─────────────────────────────────────────────
 #  SESSION STATE
@@ -337,20 +432,22 @@ def init_state():
         "username":       "",
         "issue_type":     "",
         "complaints":     [],
-        "admin_tab":      "dashboard",   # "dashboard" | "complaints"
-        "cmp_page":       0,             # pagination for complaints table
-        "view_complaint": None,          # id of complaint being viewed
+        "admin_tab":      "dashboard",
+        "cmp_page":       0,
+        "view_complaint": None,
     }
     for key, val in defaults.items():
         if key not in st.session_state:
             st.session_state[key] = val
 
     st.session_state.complaints = get_complaints()
+
+
 # ─────────────────────────────────────────────
 #  NAVIGATION
 # ─────────────────────────────────────────────
 def go(page, issue_type=""):
-    st.session_state.page       = page
+    st.session_state.page = page
     st.session_state.issue_type = issue_type
     st.rerun()
 
@@ -387,10 +484,8 @@ def logout_button():
 
 
 def back_button(label="← Back to Home", dest="home"):
-    st.markdown('<div class="back-btn">', unsafe_allow_html=True)
     if st.button(label):
         go(dest)
-    st.markdown('</div>', unsafe_allow_html=True)
 
 
 def badge_html(status):
@@ -437,12 +532,12 @@ def page_login():
 
     if login_clicked:
         uname = username.strip()
-        pwd   = password.strip()
+        pwd = password.strip()
         if not uname or not pwd:
             st.error("⚠️  Please enter both username and password.")
         elif is_admin:
             if ADMIN_CREDENTIALS.get(uname) == pwd:
-                st.session_state.role     = "admin"
+                st.session_state.role = "admin"
                 st.session_state.username = uname
                 st.session_state.admin_tab = "dashboard"
                 go("admin_dashboard")
@@ -450,7 +545,7 @@ def page_login():
                 st.error("❌  Invalid admin credentials.")
         else:
             if STUDENT_CREDENTIALS.get(uname) == pwd:
-                st.session_state.role     = "student"
+                st.session_state.role = "student"
                 st.session_state.username = uname
                 go("home")
             else:
@@ -464,67 +559,89 @@ def page_login():
 
 
 # ─────────────────────────────────────────────
-#  PAGE 1 — STUDENT HOME
+#  PAGE 1 — STUDENT HOME (WITH STYLED CARDS)
 # ─────────────────────────────────────────────
 def page_home():
     render_header()
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-
-    col_title, col_logout = st.columns([3, 1])
-    with col_title:
-        st.markdown(
-            f'<h4 class="card-title">Welcome! 👋</h4>',
-            unsafe_allow_html=True,
-        )
-        st.markdown('<p class="card-subtitle">Select the type of issue you want to report</p>', unsafe_allow_html=True)
-    with col_logout:
-        logout_button()
-
-    col1, col2, col3, col4 = st.columns(4, gap="large")
-    def card(label, desc, key, value):
-        if st.button(f"{label}\n{desc}", key=key):
-            st.session_state.issue = value
-            st.session_state.page = "complaint"
-            st.rerun()
-
+    
+    # Welcome Card
+    st.markdown(f"""
+    <div class="welcome-card">
+        <div class="welcome-text">👋 Welcome!</div>
+        <div class="welcome-badge">Student Portal</div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.markdown('<p style="text-align:center; color:#6b7a99; margin-bottom:2rem;">Select the type of issue you want to report</p>', unsafe_allow_html=True)
+    
+    # Create 4 stylish issue cards
+    col1, col2 = st.columns(2, gap="large")
+    
     with col1:
-        st.markdown('<div class="card">💻<br><b>Computer Issue</b><br>PC or Lab Problems</div>', unsafe_allow_html=True)
-        if st.button("Select", key="comp"):
-            st.session_state.issue = "Computer"
-            go("report","Computer Issue")
-
+        # Computer Issue Card
+        st.markdown("""
+        <div class="issue-card">
+            <div class="issue-icon">💻</div>
+            <div class="issue-title">Computer Issue</div>
+            <div class="issue-desc">PC or Lab Problems, Software Issues, Hardware Malfunctions</div>
+        </div>
+        """, unsafe_allow_html=True)
+        if st.button("Select Issue", key="comp_issue", use_container_width=True):
+            go("report", "Computer Issue")
+        
+        # Biometric Issue Card
+        st.markdown("""
+        <div class="issue-card">
+            <div class="issue-icon">🔏</div>
+            <div class="issue-title">Biometric Issue</div>
+            <div class="issue-desc">Fingerprint Scanner Problems, Attendance Device Issues</div>
+        </div>
+        """, unsafe_allow_html=True)
+        if st.button("Select Issue", key="bio_issue", use_container_width=True):
+            go("report", "Biometric Issue")
+    
     with col2:
-        st.markdown('<div class="card">🔐<br><b>Biometric Issue</b><br>Fingerprint Scanner Issues</div>', unsafe_allow_html=True)
-        if st.button("Select", key="bio"):
-            st.session_state.issue = "Biometric"
-            go("report","Biometric Issue")
-
-    with col3:
-        st.markdown('<div class="card">📺<br><b>Board / Projector</b><br>Smart Board Problems</div>', unsafe_allow_html=True)
-        if st.button("Select", key="board"):
-            st.session_state.issue = "Board"
-            go("report","Board / Projector Issue")
-
-    with col4:
-        st.markdown('<div class="card">📶<br><b>Network Issue</b><br>Internet / Wi-Fi Problems</div>', unsafe_allow_html=True)
-        if st.button("Select", key="net"):
-            st.session_state.issue = "Network"
-            go("report","Network Issue")
-
+        # Board/Projector Issue Card
+        st.markdown("""
+        <div class="issue-card">
+            <div class="issue-icon">📺</div>
+            <div class="issue-title">Board / Projector Issue</div>
+            <div class="issue-desc">Smart Board Problems, Projector Display Issues</div>
+        </div>
+        """, unsafe_allow_html=True)
+        if st.button("Select Issue", key="board_issue", use_container_width=True):
+            go("report", "Board / Projector Issue")
+        
+        # Network Issue Card
+        st.markdown("""
+        <div class="issue-card">
+            <div class="issue-icon">📶</div>
+            <div class="issue-title">Network Issue</div>
+            <div class="issue-desc">Internet Connectivity, Wi-Fi Problems, LAN Issues</div>
+        </div>
+        """, unsafe_allow_html=True)
+        if st.button("Select Issue", key="net_issue", use_container_width=True):
+            go("report", "Network Issue")
+    
     st.markdown("<br>", unsafe_allow_html=True)
+    
+    # Action Buttons
     col_a, col_b = st.columns(2)
     with col_a:
         st.markdown('<div class="blue-btn">', unsafe_allow_html=True)
         if st.button("📋  My Complaints", use_container_width=True):
             go("complaints")
         st.markdown('</div>', unsafe_allow_html=True)
+    
     with col_b:
         st.markdown('<div class="green-btn">', unsafe_allow_html=True)
         if st.button("📍  Track Status  ✅", use_container_width=True):
             go("track")
         st.markdown('</div>', unsafe_allow_html=True)
-
-    st.markdown('</div>', unsafe_allow_html=True)
+    
+    # Logout button
+    logout_button()
+    
     st.markdown("""
     <div class="app-footer">
         Fast Reporting <span>•</span> Quick Resolution <span>•</span> Enhanced Campus Management
@@ -581,7 +698,25 @@ def page_report():
         if not location.strip() or not description.strip():
             st.error("⚠️  Please fill in both Location and Description.")
         else:
+       
+     # 🔍 CHECK DUPLICATE
+            duplicate = find_duplicate(issue_type, location.strip())
+
+            if duplicate:
+                existing_id, existing_desc = duplicate
+
+                st.warning("⚠️ This issue is already reported!")
+
+                st.info(f"""
+                📌 Complaint ID: {existing_id}
+                📝 Issue: {existing_desc}
+                """)
+
+                st.stop()  # ⛔ stops insertion
+
+            # ✅ NO DUPLICATE → CONTINUE
             cid = get_next_complaint_id()
+
             complaint_data = {
                 "id": cid,
                 "type": issue_type,
@@ -593,14 +728,17 @@ def page_report():
                 "student": st.session_state.username,
                 "accepted": None
             }
-            
+
             add_complaint(complaint_data)
 
-# 🔔 SEND EMAIL TO ADMIN HERE
+            # 🔔 EMAIL
             send_admin_notification(st.session_state.username, complaint_data)
 
-            st.success(f"✅ Complaint **{cid}** submitted! Our team will respond within 24–48 hours.")
+            st.success(f"✅ Complaint **{cid}** submitted!")
             st.balloons()
+            
+
+            st.markdown('</div>', unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────
 #  PAGE 3 — MY COMPLAINTS
@@ -650,10 +788,10 @@ TRACK_STEPS = {
 def render_timeline(status):
     done_flags = TRACK_STEPS.get(status, [True, False, False])
     for label, done in zip(STEP_LABELS, done_flags):
-        dot_class = "step-dot-done"  if done else "step-dot-pending"
-        symbol    = "✓"              if done else "·"
-        weight    = "700"            if done else "400"
-        color     = "#1a3a6b"        if done else "#aaa"
+        dot_class = "step-dot-done" if done else "step-dot-pending"
+        symbol = "✓" if done else "·"
+        weight = "700" if done else "400"
+        color = "#1a3a6b" if done else "#aaa"
         st.markdown(f"""
         <div class="step-row">
             <div class="{dot_class}">{symbol}</div>
@@ -705,13 +843,11 @@ def page_track():
 # ─────────────────────────────────────────────
 def render_admin_dashboard_tab():
     all_c = st.session_state.complaints
-    total    = len(all_c)
+    total = len(all_c)
     resolved = sum(1 for c in all_c if c["status"] == "Resolved")
     progress = sum(1 for c in all_c if c["status"] == "In Progress")
-    # Simulate avg response time
     avg_resp = "2.5 hrs"
 
-    # ── Stat cards ──
     st.markdown(f"""
     <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:1.6rem;">
         <div class="stat-card" style="background:#1e4d8c; color:#fff;">
@@ -737,25 +873,20 @@ def render_admin_dashboard_tab():
     </div>
     """, unsafe_allow_html=True)
 
-    # ── Charts row ──
-    # Count by type
     type_counts = {}
     for c in all_c:
         t = c["type"]
         type_counts[t] = type_counts.get(t, 0) + 1
 
-    # Monthly trend — simulate with static + real total
     months_labels = ["Nov", "Dec", "Jan", "Feb", "Mar", "Apr"]
-    months_data   = [34, 29, 41, 45, 65, max(total, 0)]
-
-    # Serialize for JS
+    months_data = [34, 29, 41, 45, 65, max(total, 0)]
     tc_labels = list(type_counts.keys()) or ["Computer Issue", "Network Issue", "Biometric Issue", "Board / Projector Issue"]
     tc_values = list(type_counts.values()) or [51, 30, 22, 21]
     colors_pie = ["#1e4d8c", "#e67e22", "#2a9d3a", "#c0392b", "#8e44ad"]
 
     chart_data = json.dumps({
         "months": months_labels,
-        "trend":  months_data,
+        "trend": months_data,
         "pie_labels": tc_labels,
         "pie_values": tc_values,
         "colors": colors_pie[:len(tc_labels)],
@@ -784,22 +915,19 @@ def render_admin_dashboard_tab():
       <div class="chart-card">
         <div class="chart-title">Complaints Trend</div>
         <div style="position:relative; height:200px;">
-          <canvas id="trendChart" role="img" aria-label="Bar chart of monthly complaint trends">Monthly complaint trend data.</canvas>
+          <canvas id="trendChart"></canvas>
         </div>
       </div>
       <div class="chart-card">
         <div class="chart-title">Issues Breakdown</div>
         <div style="position:relative; height:180px;">
-          <canvas id="pieChart" role="img" aria-label="Donut chart of issue type breakdown">Issue type breakdown.</canvas>
+          <canvas id="pieChart"></canvas>
         </div>
         <div class="legend" id="pieLegend"></div>
       </div>
     </div>
-
     <script>
     const d = {chart_data};
-
-    // Trend bar chart
     new Chart(document.getElementById('trendChart'), {{
       type: 'bar',
       data: {{
@@ -820,8 +948,6 @@ def render_admin_dashboard_tab():
         }}
       }}
     }});
-
-    // Donut pie chart
     new Chart(document.getElementById('pieChart'), {{
       type: 'doughnut',
       data: {{
@@ -835,18 +961,12 @@ def render_admin_dashboard_tab():
       }},
       options: {{
         responsive: true, maintainAspectRatio: false,
-        plugins: {{ legend: {{ display: false }}, tooltip: {{ callbacks: {{
-          label: (ctx) => ` ${{ctx.label}}: ${{ctx.parsed}}`
-        }} }} }},
+        plugins: {{ legend: {{ display: false }} }},
         cutout: '55%',
       }}
     }});
-
-    // Custom legend
     const leg = document.getElementById('pieLegend');
-    const total = d.pie_values.reduce((a,b) => a+b, 0);
     d.pie_labels.forEach((lbl, i) => {{
-      const pct = total > 0 ? ((d.pie_values[i]/total)*100).toFixed(1) : '0';
       const row = document.createElement('div');
       row.className = 'legend-row';
       row.innerHTML = `<div style="display:flex;align-items:center;gap:5px;"><div class="leg-dot" style="background:${{d.colors[i]}}"></div>${{lbl}} (${{d.pie_values[i]}})</div><span style="font-weight:700;color:#1a3a6b;">${{d.pie_values[i]}}</span>`;
@@ -856,6 +976,8 @@ def render_admin_dashboard_tab():
     </body>
     </html>
     """, height=370)
+
+
 
 
 # ─────────────────────────────────────────────
