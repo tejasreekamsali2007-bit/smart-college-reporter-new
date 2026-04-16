@@ -735,7 +735,7 @@ def page_report():
             send_admin_notification(st.session_state.username, complaint_data)
 
             st.success(f"✅ Complaint **{cid}** submitted!")
-            st.balloons()
+            
             
 
             st.markdown('</div>', unsafe_allow_html=True)
